@@ -1,0 +1,62 @@
+# Maintainer: Ваше Имя <you@example.com>
+pkgname=elyhorizon-bin
+_upstream_ver="0.2.3-beta.1"
+pkgver=0.2.3_beta.1
+pkgrel=1
+pkgdesc='Minecraft: Java Edition 26.3 client written in Rust — Horizon fork with Ely.by accounts support'
+arch=('x86_64')
+url='https://github.com/kkerneldev/Elyhorizon'
+license=('MIT' 'OFL-1.1')
+depends=('bash' 'glibc' 'libgcc' 'libxcb' 'libxkbcommon' 'libxkbcommon-x11'
+         'wayland' 'vulkan-icd-loader' 'hicolor-icon-theme' 'xdg-utils')
+optdepends=('jdk25-openjdk: Java 25 JDK for preparing game resources'
+            'python: preparation of older Horizon releases'
+            'vulkan-driver: Vulkan graphics driver for the launcher and game'
+            'gnome-keyring: persist Ely.by sign-in through Secret Service'
+            'kwallet: alternative Secret Service provider for Ely.by sign-in')
+provides=("elyhorizon-launcher=$pkgver")
+conflicts=('elyhorizon-launcher' 'horizon-launcher' 'horizon-launcher-bin')
+options=('!strip' '!debug')
+_tag="elyhorizon-v${_upstream_ver}"
+source=("elyhorizon-${pkgver}-linux-x86_64.tar.gz::${url}/releases/download/${_tag}/Elyhorizon-${_upstream_ver}-linux-x86_64.tar.gz"
+        "horizon-launcher.desktop::${url}/raw/main/packaging/linux/horizon-launcher.desktop"
+        "horizon.desktop::${url}/raw/main/packaging/linux/horizon.desktop"
+        "horizon.ico::${url}/raw/main/packaging/icons/horizon.ico")
+sha256sums=('SKIP'
+            'SKIP'
+            'SKIP'
+            'SKIP')
+package() {
+    install -d "${pkgdir}/usr/lib/elyhorizon"
+    install -Dm755 "${srcdir}/Elyhorizon/horizon-launcher" "${pkgdir}/usr/lib/elyhorizon/horizon-launcher"
+    install -Dm755 "${srcdir}/Elyhorizon/horizon-client" "${pkgdir}/usr/lib/elyhorizon/horizon-client"
+    
+    install -d "${pkgdir}/usr/bin"
+    cat > "${pkgdir}/usr/bin/elyhorizon" <<'EOF'
+#!/bin/sh
+export HORIZON_LAUNCHER_NO_SELF_UPDATE=1
+export HORIZON_LAUNCHER_DESKTOP_EXEC=/usr/bin/elyhorizon
+launcher=/usr/lib/elyhorizon/horizon-launcher
+if [ "$#" -eq 0 ]; then
+    "$launcher" desktop-entry --remove >/dev/null || exit "$?"
+fi
+exec "$launcher" "$@"
+EOF
+    chmod 755 "${pkgdir}/usr/bin/elyhorizon"
+
+    install -Dm644 "${srcdir}/horizon-launcher.desktop" "${pkgdir}/usr/share/applications/elyhorizon.desktop"
+    install -Dm644 "${srcdir}/horizon.desktop" "${pkgdir}/usr/share/applications/horizon.desktop"
+    
+    sed -i 's|^Exec=.*|Exec=elyhorizon %U|g' "${pkgdir}/usr/share/applications/elyhorizon.desktop"
+    sed -i 's|^Exec=.*|Exec=elyhorizon %U|g' "${pkgdir}/usr/share/applications/horizon.desktop"
+    sed -i 's|^Icon=.*|Icon=horizon|g' "${pkgdir}/usr/share/applications/elyhorizon.desktop"
+    sed -i 's|^Icon=.*|Icon=horizon|g' "${pkgdir}/usr/share/applications/horizon.desktop"
+
+    install -Dm644 "${srcdir}/horizon.ico" "${pkgdir}/usr/share/icons/hicolor/256x256/apps/horizon.ico"
+    
+    install -Dm644 "${srcdir}/Elyhorizon/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    install -Dm644 "${srcdir}/Elyhorizon/THIRD_PARTY_NOTICES.md" "${pkgdir}/usr/share/licenses/${pkgname}/THIRD_PARTY_NOTICES.md"
+    install -d "${pkgdir}/usr/share/doc/${pkgname}"
+    install -Dm644 "${srcdir}/Elyhorizon/README.txt" "${pkgdir}/usr/share/doc/${pkgname}/README.txt"
+    install -Dm644 "${srcdir}/Elyhorizon/elyby-account.md" "${pkgdir}/usr/share/doc/${pkgname}/elyby-account.md"
+}
